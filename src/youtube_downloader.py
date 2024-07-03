@@ -35,7 +35,7 @@ async def download_video(url, choice, itag, update, context):
         total_size = stream.filesize
         bytes_downloaded = total_size - bytes_remaining
         percentage = bytes_downloaded / total_size * 100
-        if int(percentage) > last_percentage:
+        if int(percentage) >= last_percentage + 5:
             last_percentage = int(percentage)
             context.application.create_task(
                 send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -58,7 +58,7 @@ async def download_video(url, choice, itag, update, context):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     merge_percentage = 0
     while process.poll() is None:
-        merge_percentage += 5
+        merge_percentage += 1
         if merge_percentage > 100:
             merge_percentage = 100
         await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
@@ -91,7 +91,7 @@ async def download_playlist(url, update, context):
             total_size = stream.filesize
             bytes_downloaded = total_size - bytes_remaining
             percentage = bytes_downloaded / total_size * 100
-            if int(percentage) > last_percentage:
+            if int(percentage) >= last_percentage + 5:
                 last_percentage = int(percentage)
                 context.application.create_task(
                     send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -113,7 +113,7 @@ async def download_playlist(url, update, context):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         merge_percentage = 0
         while process.poll() is None:
-            merge_percentage += 5
+            merge_percentage += 1
             if merge_percentage > 100:
                 merge_percentage = 100
             await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
@@ -147,7 +147,7 @@ async def download_channel(url, update, context):
             total_size = stream.filesize
             bytes_downloaded = total_size - bytes_remaining
             percentage = bytes_downloaded / total_size * 100
-            if int(percentage) > last_percentage:
+            if int(percentage) >= last_percentage + 5:
                 last_percentage = int(percentage)
                 context.application.create_task(
                     send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -169,7 +169,7 @@ async def download_channel(url, update, context):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         merge_percentage = 0
         while process.poll() is None:
-            merge_percentage += 5
+            merge_percentage += 1
             if merge_percentage > 100:
                 merge_percentage = 100
             await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
