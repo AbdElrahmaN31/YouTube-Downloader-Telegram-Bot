@@ -15,6 +15,8 @@ This is a Telegram bot that allows users to download videos, audio, playlists, o
 
 - Python 3.8+
 - [Telegram Bot Token](https://core.telegram.org/bots#6-botfather)
+- [FFmpeg](https://ffmpeg.org/download.html)
+- PM2 (optional, for deployment)
 
 ## Installation
 
@@ -57,6 +59,22 @@ This is a Telegram bot that allows users to download videos, audio, playlists, o
    python bot.py
     ```
    
+## Running with PM2
+
+1. Ensure you have set the environment variable for your bot token as shown above.
+2. Install PM2:
+   ```bash
+   npm install pm2 -g
+    ```
+3. Start the bot with PM2:
+   ```bash
+   pm2 start ecosystem.config.js
+    ```
+4. Check the status of the bot:
+    ```bash
+    pm2 status
+     ```
+
 ## Usage
 
 1. Open Telegram and start a chat with your bot.
