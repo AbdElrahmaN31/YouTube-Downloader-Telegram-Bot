@@ -1,35 +1,43 @@
 from pytube import YouTube, Playlist, Channel
 import os
+import subprocess
+import re
+
+
+def sanitize_title(title):
+    return re.sub(r'[\\/*?:"<>|]', "", title)
 
 
 async def download_video(url, choice, itag, update, context):
     yt = YouTube(url)
-    stream = yt.streams.get_by_itag(itag)
+    video_stream = yt.streams.get_by_itag(itag)
+    video_title = sanitize_title(yt.title)
 
-    # Update the user about the start of the download
-    message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {yt.title}...")
+    # Select the corresponding audio stream
+    audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
 
-    last_percentage = 0
+    # Download the video stream
+    video_path = video_stream.download(filename=f'{video_title}_video.mp4')
 
-    def progress_callback(stream, chunk, bytes_remaining):
-        nonlocal last_percentage
-        total_size = stream.filesize
-        bytes_downloaded = total_size - bytes_remaining
-        percentage = bytes_downloaded / total_size * 100
-        if int(percentage) > last_percentage:
-            last_percentage = int(percentage)
-            text = f"Downloading {yt.title}... {percentage:.2f}%"
-            context.application.create_task(
-                context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+    # Download the audio stream
+    audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-    yt.register_on_progress_callback(progress_callback)
-    download_path = stream.download()
+    # Merge video and audio using ffmpeg
+    output_path = f'{video_title}.mp4'
+    command = [
+        'ffmpeg',
+        '-i', video_path,
+        '-i', audio_path,
+        '-c', 'copy',
+        output_path
+    ]
+    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    # Notify the user about the completion
-    await context.bot.edit_message_text(text=f"Downloaded {yt.title}!", chat_id=message.chat_id,
-                                        message_id=message.message_id)
+    # Clean up temporary files
+    os.remove(video_path)
+    os.remove(audio_path)
 
-    return download_path
+    return output_path
 
 
 async def download_playlist(url, update, context):
@@ -37,31 +45,32 @@ async def download_playlist(url, update, context):
     download_paths = []
     for video_url in playlist.video_urls:
         yt = YouTube(video_url)
-        stream = yt.streams.filter(file_extension='mp4').order_by('resolution').desc().first()
+        video_stream = yt.streams.filter(file_extension='mp4').order_by('resolution').desc().first()
+        audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+        video_title = sanitize_title(yt.title)
 
-        # Update the user about the start of the download
-        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {yt.title}...")
+        # Download the video stream
+        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
 
-        last_percentage = 0
+        # Download the audio stream
+        audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        def progress_callback(stream, chunk, bytes_remaining):
-            nonlocal last_percentage
-            total_size = stream.filesize
-            bytes_downloaded = total_size - bytes_remaining
-            percentage = bytes_downloaded / total_size * 100
-            if int(percentage) > last_percentage:
-                last_percentage = int(percentage)
-                text = f"Downloading {yt.title}... {percentage:.2f}%"
-                context.application.create_task(
-                    context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+        # Merge video and audio using ffmpeg
+        output_path = f'{video_title}.mp4'
+        command = [
+            'ffmpeg',
+            '-i', video_path,
+            '-i', audio_path,
+            '-c', 'copy',
+            output_path
+        ]
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        yt.register_on_progress_callback(progress_callback)
-        download_path = stream.download()
-        download_paths.append(download_path)
+        # Clean up temporary files
+        os.remove(video_path)
+        os.remove(audio_path)
 
-        # Notify the user about the completion
-        await context.bot.edit_message_text(text=f"Downloaded {yt.title}!", chat_id=message.chat_id,
-                                            message_id=message.message_id)
+        download_paths.append(output_path)
 
     return download_paths
 
@@ -71,30 +80,31 @@ async def download_channel(url, update, context):
     download_paths = []
     for video_url in channel.video_urls:
         yt = YouTube(video_url)
-        stream = yt.streams.filter(file_extension='mp4').order_by('resolution').desc().first()
+        video_stream = yt.streams.filter(file_extension='mp4').order_by('resolution').desc().first()
+        audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+        video_title = sanitize_title(yt.title)
 
-        # Update the user about the start of the download
-        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {yt.title}...")
+        # Download the video stream
+        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
 
-        last_percentage = 0
+        # Download the audio stream
+        audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        def progress_callback(stream, chunk, bytes_remaining):
-            nonlocal last_percentage
-            total_size = stream.filesize
-            bytes_downloaded = total_size - bytes_remaining
-            percentage = bytes_downloaded / total_size * 100
-            if int(percentage) > last_percentage:
-                last_percentage = int(percentage)
-                text = f"Downloading {yt.title}... {percentage:.2f}%"
-                context.application.create_task(
-                    context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+        # Merge video and audio using ffmpeg
+        output_path = f'{video_title}.mp4'
+        command = [
+            'ffmpeg',
+            '-i', video_path,
+            '-i', audio_path,
+            '-c', 'copy',
+            output_path
+        ]
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        yt.register_on_progress_callback(progress_callback)
-        download_path = stream.download()
-        download_paths.append(download_path)
+        # Clean up temporary files
+        os.remove(video_path)
+        os.remove(audio_path)
 
-        # Notify the user about the completion
-        await context.bot.edit_message_text(text=f"Downloaded {yt.title}!", chat_id=message.chat_id,
-                                            message_id=message.message_id)
+        download_paths.append(output_path)
 
     return download_paths

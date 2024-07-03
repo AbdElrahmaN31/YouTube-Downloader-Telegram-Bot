@@ -57,6 +57,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     reply_markup = InlineKeyboardMarkup(buttons)
 
+    # Send an informative message after choosing the type
+    type_text = "video" if choice == 'video' else "audio"
+    await context.bot.send_message(chat_id=query.message.chat_id,
+                                   text=f"You chose {type_text}. Now, select the quality:")
+
     # Check if the new reply markup differs from the current one
     if query.message.reply_markup != reply_markup:
         await query.edit_message_text('Choose quality:', reply_markup=reply_markup)
