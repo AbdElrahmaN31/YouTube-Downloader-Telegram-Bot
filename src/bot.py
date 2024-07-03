@@ -4,7 +4,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from pytube import YouTube
 from youtube_downloader import download_video, download_playlist, download_channel
 
-BOT_TOKEN = os.getenv('BOT_TOKEN')
+BOT_TOKEN = '7105778178:AAFNz-RAnCrB4wImK1q8EnGCwStoOx_DkIM'
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
