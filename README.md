@@ -33,14 +33,6 @@ This is a Telegram bot that allows users to download videos, audio, playlists, o
    ```bash
    pip install -r requirements.txt
     ```
-4. Update ``BOT_TOKEN`` in ``bot.py`` as the following:
-   ```env
-   BOT_TOKEN=your_telegram_bot_token
-    ```
-5. Run the bot:
-   ```bash
-   python bot.py
-    ```
 
 ## Setting Up the Bot
 
