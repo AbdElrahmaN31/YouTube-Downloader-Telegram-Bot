@@ -46,8 +46,7 @@ This is a Telegram bot that allows users to download videos, audio, playlists, o
 
 1. Create a new bot on Telegram by talking to [BotFather](https://core.telegram.org/bots#6-botfather).
 2. Follow the instructions to get the bot token.
-3. Copy the bot token and update ``BOT_TOKEN`` in ``bot.py``.
-4.Set the bot token as an environment variable:
+3. Set the bot token as an environment variable:
    - On Linux or macOS:
      ```bash
      export BOT_TOKEN='YOUR_TELEGRAM_BOT_TOKEN'
