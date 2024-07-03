@@ -49,11 +49,13 @@ async def download_video(url, choice, itag, update, context):
         output_path
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    merge_message = None
     while process.poll() is None:
         time.sleep(1)
-        # You can add more frequent updates if needed
-        await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}", chat_id=message.chat_id,
-                                            message_id=message.message_id)
+        if not merge_message or merge_message != f"Merging video and audio... {video_title}":
+            merge_message = f"Merging video and audio... {video_title}"
+            await context.bot.edit_message_text(text=merge_message, chat_id=message.chat_id,
+                                                message_id=message.message_id)
 
     # Clean up temporary files
     os.remove(video_path)
@@ -103,10 +105,13 @@ async def download_playlist(url, update, context):
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        merge_message = None
         while process.poll() is None:
             time.sleep(1)
-            await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}",
-                                                chat_id=message.chat_id, message_id=message.message_id)
+            if not merge_message or merge_message != f"Merging video and audio... {video_title}":
+                merge_message = f"Merging video and audio... {video_title}"
+                await context.bot.edit_message_text(text=merge_message, chat_id=message.chat_id,
+                                                    message_id=message.message_id)
 
         os.remove(video_path)
         os.remove(audio_path)
@@ -157,10 +162,13 @@ async def download_channel(url, update, context):
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        merge_message = None
         while process.poll() is None:
             time.sleep(1)
-            await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}",
-                                                chat_id=message.chat_id, message_id=message.message_id)
+            if not merge_message or merge_message != f"Merging video and audio... {video_title}":
+                merge_message = f"Merging video and audio... {video_title}"
+                await context.bot.edit_message_text(text=merge_message, chat_id=message.chat_id,
+                                                    message_id=message.message_id)
 
         os.remove(video_path)
         os.remove(audio_path)
