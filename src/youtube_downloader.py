@@ -22,6 +22,12 @@ async def download_video(url, choice, itag, update, context):
     # Download the audio stream
     audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
+    # Check if both files are non-empty
+    if os.path.getsize(video_path) == 0 or os.path.getsize(audio_path) == 0:
+        os.remove(video_path)
+        os.remove(audio_path)
+        raise Exception("Downloaded file(s) are empty. Please try again.")
+
     # Merge video and audio using ffmpeg
     output_path = f'{video_title}.mp4'
     command = [
@@ -54,6 +60,12 @@ async def download_playlist(url, update, context):
 
         # Download the audio stream
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
+
+        # Check if both files are non-empty
+        if os.path.getsize(video_path) == 0 or os.path.getsize(audio_path) == 0:
+            os.remove(video_path)
+            os.remove(audio_path)
+            raise Exception("Downloaded file(s) are empty. Please try again.")
 
         # Merge video and audio using ffmpeg
         output_path = f'{video_title}.mp4'
@@ -89,6 +101,12 @@ async def download_channel(url, update, context):
 
         # Download the audio stream
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
+
+        # Check if both files are non-empty
+        if os.path.getsize(video_path) == 0 or os.path.getsize(audio_path) == 0:
+            os.remove(video_path)
+            os.remove(audio_path)
+            raise Exception("Downloaded file(s) are empty. Please try again.")
 
         # Merge video and audio using ffmpeg
         output_path = f'{video_title}.mp4'
