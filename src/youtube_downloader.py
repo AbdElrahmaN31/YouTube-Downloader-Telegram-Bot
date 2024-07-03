@@ -2,9 +2,12 @@ from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
 import re
+from tqdm import tqdm
+
 
 def sanitize_title(title):
     return re.sub(r'[\\/*?:"<>|]', "", title)
+
 
 async def download_video(url, choice, itag, update, context):
     yt = YouTube(url)
@@ -31,13 +34,23 @@ async def download_video(url, choice, itag, update, context):
         '-strict', 'experimental',
         output_path
     ]
-    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pbar = tqdm(total=100, desc='Merging video and audio')
+
+    while True:
+        output = process.stdout.readline()
+        if output == b'' and process.poll() is not None:
+            break
+        if output:
+            pbar.update(1)
+    pbar.close()
 
     # Clean up temporary files
     os.remove(video_path)
     os.remove(audio_path)
 
     return output_path
+
 
 async def download_playlist(url, update, context):
     playlist = Playlist(url)
@@ -65,7 +78,16 @@ async def download_playlist(url, update, context):
             '-strict', 'experimental',
             output_path
         ]
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pbar = tqdm(total=100, desc='Merging video and audio')
+
+        while True:
+            output = process.stdout.readline()
+            if output == b'' and process.poll() is not None:
+                break
+            if output:
+                pbar.update(1)
+        pbar.close()
 
         # Clean up temporary files
         os.remove(video_path)
@@ -74,6 +96,7 @@ async def download_playlist(url, update, context):
         download_paths.append(output_path)
 
     return download_paths
+
 
 async def download_channel(url, update, context):
     channel = Channel(url)
@@ -101,7 +124,16 @@ async def download_channel(url, update, context):
             '-strict', 'experimental',
             output_path
         ]
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pbar = tqdm(total=100, desc='Merging video and audio')
+
+        while True:
+            output = process.stdout.readline()
+            if output == b'' and process.poll() is not None:
+                break
+            if output:
+                pbar.update(1)
+        pbar.close()
 
         # Clean up temporary files
         os.remove(video_path)
