@@ -2,7 +2,7 @@ from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
 import re
-from tqdm import tqdm
+import time
 
 
 def sanitize_title(title):
@@ -17,10 +17,24 @@ async def download_video(url, choice, itag, update, context):
     # Select the corresponding audio stream
     audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
 
-    # Download the video stream
-    video_path = video_stream.download(filename=f'{video_title}_video.mp4')
+    # Update the user about the start of the download
+    message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
 
-    # Download the audio stream
+    last_percentage = 0
+
+    def progress_callback(stream, chunk, bytes_remaining):
+        nonlocal last_percentage
+        total_size = stream.filesize
+        bytes_downloaded = total_size - bytes_remaining
+        percentage = bytes_downloaded / total_size * 100
+        if int(percentage) > last_percentage:
+            last_percentage = int(percentage)
+            text = f"Downloading {video_title}... {percentage:.2f}%"
+            context.application.create_task(
+                context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+
+    yt.register_on_progress_callback(progress_callback)
+    video_path = video_stream.download(filename=f'{video_title}_video.mp4')
     audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
     # Merge video and audio using ffmpeg
@@ -35,20 +49,18 @@ async def download_video(url, choice, itag, update, context):
         output_path
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    pbar = tqdm(total=100, desc='Merging video and audio')
-
-    while True:
-        output = process.stdout.readline()
-        if output == b'' and process.poll() is not None:
-            break
-        if output:
-            pbar.update(1)
-    pbar.close()
+    while process.poll() is None:
+        time.sleep(1)
+        # You can add more frequent updates if needed
+        await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}", chat_id=message.chat_id,
+                                            message_id=message.message_id)
 
     # Clean up temporary files
     os.remove(video_path)
     os.remove(audio_path)
 
+    await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                        message_id=message.message_id)
     return output_path
 
 
@@ -61,13 +73,25 @@ async def download_playlist(url, update, context):
         audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
         video_title = sanitize_title(yt.title)
 
-        # Download the video stream
-        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
+        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
 
-        # Download the audio stream
+        last_percentage = 0
+
+        def progress_callback(stream, chunk, bytes_remaining):
+            nonlocal last_percentage
+            total_size = stream.filesize
+            bytes_downloaded = total_size - bytes_remaining
+            percentage = bytes_downloaded / total_size * 100
+            if int(percentage) > last_percentage:
+                last_percentage = int(percentage)
+                text = f"Downloading {video_title}... {percentage:.2f}%"
+                context.application.create_task(
+                    context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+
+        yt.register_on_progress_callback(progress_callback)
+        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        # Merge video and audio using ffmpeg
         output_path = f'{video_title}.mp4'
         command = [
             'ffmpeg',
@@ -79,20 +103,16 @@ async def download_playlist(url, update, context):
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        pbar = tqdm(total=100, desc='Merging video and audio')
+        while process.poll() is None:
+            time.sleep(1)
+            await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}",
+                                                chat_id=message.chat_id, message_id=message.message_id)
 
-        while True:
-            output = process.stdout.readline()
-            if output == b'' and process.poll() is not None:
-                break
-            if output:
-                pbar.update(1)
-        pbar.close()
-
-        # Clean up temporary files
         os.remove(video_path)
         os.remove(audio_path)
 
+        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                            message_id=message.message_id)
         download_paths.append(output_path)
 
     return download_paths
@@ -107,13 +127,25 @@ async def download_channel(url, update, context):
         audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
         video_title = sanitize_title(yt.title)
 
-        # Download the video stream
-        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
+        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
 
-        # Download the audio stream
+        last_percentage = 0
+
+        def progress_callback(stream, chunk, bytes_remaining):
+            nonlocal last_percentage
+            total_size = stream.filesize
+            bytes_downloaded = total_size - bytes_remaining
+            percentage = bytes_downloaded / total_size * 100
+            if int(percentage) > last_percentage:
+                last_percentage = int(percentage)
+                text = f"Downloading {video_title}... {percentage:.2f}%"
+                context.application.create_task(
+                    context.bot.edit_message_text(text=text, chat_id=message.chat_id, message_id=message.message_id))
+
+        yt.register_on_progress_callback(progress_callback)
+        video_path = video_stream.download(filename=f'{video_title}_video.mp4')
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        # Merge video and audio using ffmpeg
         output_path = f'{video_title}.mp4'
         command = [
             'ffmpeg',
@@ -125,20 +157,16 @@ async def download_channel(url, update, context):
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        pbar = tqdm(total=100, desc='Merging video and audio')
+        while process.poll() is None:
+            time.sleep(1)
+            await context.bot.edit_message_text(text=f"Merging video and audio... {video_title}",
+                                                chat_id=message.chat_id, message_id=message.message_id)
 
-        while True:
-            output = process.stdout.readline()
-            if output == b'' and process.poll() is not None:
-                break
-            if output:
-                pbar.update(1)
-        pbar.close()
-
-        # Clean up temporary files
         os.remove(video_path)
         os.remove(audio_path)
 
+        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                            message_id=message.message_id)
         download_paths.append(output_path)
 
     return download_paths
