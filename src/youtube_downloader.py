@@ -1,5 +1,3 @@
-import time
-
 from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
@@ -53,9 +51,10 @@ async def download_video(url, choice, itag, update, context):
             'ffmpeg',
             '-i', video_path,
             '-i', audio_path,
-            '-c:v', 'copy',
-            '-c:a', 'aac',
+            '-c:v', 'libx264',  # Ensure the video codec is H.264
+            '-c:a', 'aac',  # Ensure the audio codec is AAC
             '-strict', 'experimental',
+            '-movflags', '+faststart',  # Ensure the video is streamable
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -133,9 +132,10 @@ async def download_playlist(url, update, context):
                 'ffmpeg',
                 '-i', video_path,
                 '-i', audio_path,
-                '-c:v', 'copy',
-                '-c:a', 'aac',
+                '-c:v', 'libx264',  # Ensure the video codec is H.264
+                '-c:a', 'aac',  # Ensure the audio codec is AAC
                 '-strict', 'experimental',
+                '-movflags', '+faststart',  # Ensure the video is streamable
                 output_path
             ]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -190,9 +190,10 @@ async def download_channel(url, update, context):
                 'ffmpeg',
                 '-i', video_path,
                 '-i', audio_path,
-                '-c:v', 'copy',
-                '-c:a', 'aac',
+                '-c:v', 'libx264',  # Ensure the video codec is H.264
+                '-c:a', 'aac',  # Ensure the audio codec is AAC
                 '-strict', 'experimental',
+                '-movflags', '+faststart',  # Ensure the video is streamable
                 output_path
             ]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
