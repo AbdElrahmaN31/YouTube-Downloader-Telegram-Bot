@@ -1,16 +1,45 @@
 import os
+import ntplib
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from youtube_downloader import download_video, download_playlist, download_channel, split_video_by_size
 from pytube import exceptions, YouTube
+import time
 
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-API_ID = os.getenv('API_ID')
-API_HASH = os.getenv('API_HASH')
+
+# Function to get time from NTP server
+def get_ntp_time():
+    client = ntplib.NTPClient()
+    response = client.request('pool.ntp.org')
+    return response.tx_time
+
+
+# Get NTP time and sync system time if needed
+def sync_time():
+    try:
+        ntp_time = get_ntp_time()
+        current_time = time.time()
+        if abs(ntp_time - current_time) > 5:  # If time difference is more than 5 seconds
+            print("Time difference detected. Syncing time...")
+            os.system(f'sudo date -s @{ntp_time}')
+    except Exception as e:
+        print(f"Failed to sync time: {e}")
+
+
+# Sync system time
+sync_time()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+API_ID = os.getenv("API_ID")
+API_HASH = os.getenv("API_HASH")
+
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 # Initialize the Pyrogram Client
 app = Client("youtube_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# Dictionary to store user sessions
+user_sessions = {}
 
 
 @app.on_message(filters.command("start"))
@@ -21,6 +50,9 @@ async def start(client, message):
 @app.on_message(filters.text & ~filters.command(["start"]))
 async def choose_download_type(client, message):
     url = message.text  # The URL sent by the user
+    chat_id = message.chat.id
+    user_sessions[chat_id] = url  # Store the URL in the user session
+
     try:
         if 'playlist' in url:
             await message.reply("Downloading Playlist...")
@@ -48,29 +80,34 @@ async def choose_download_type(client, message):
 async def button_handler(client, callback_query):
     choice = callback_query.data
     chat_id = callback_query.message.chat.id
-    url = callback_query.message.reply_to_message.text  # The URL sent by the user
-    try:
-        yt = YouTube(url)
-        if choice == 'video':
-            streams = yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
-        else:
-            streams = yt.streams.filter(only_audio=True).order_by('abr').desc()
 
-        buttons = []
-        for stream in streams:
-            quality = f"{stream.resolution or stream.abr} - {stream.mime_type.split('/')[1]}"
-            buttons.append([InlineKeyboardButton(quality, callback_data=f"{choice}_{stream.itag}")])
+    url = user_sessions.get(chat_id)
+    if url:
+        try:
+            yt = YouTube(url)
+            if choice == 'video':
+                streams = yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
+            else:
+                streams = yt.streams.filter(only_audio=True).order_by('abr').desc()
 
-        reply_markup = InlineKeyboardMarkup(buttons)
+            buttons = []
+            for stream in streams:
+                quality = f"{stream.resolution or stream.abr} - {stream.mime_type.split('/')[1]}"
+                buttons.append([InlineKeyboardButton(quality, callback_data=f"{choice}_{stream.itag}")])
 
-        # Send an informative message after choosing the type
-        type_text = "video" if choice == 'video' else "audio"
-        await client.edit_message_text(chat_id, callback_query.message.id,
-                                       f"You chose {type_text}. Now, select the quality:", reply_markup=reply_markup)
-    except exceptions.VideoUnavailable:
-        await client.edit_message_text(chat_id, callback_query.message.id, "The video is unavailable.")
-    except Exception as e:
-        await client.edit_message_text(chat_id, callback_query.message.id, f"Error: {e}")
+            reply_markup = InlineKeyboardMarkup(buttons)
+
+            # Send an informative message after choosing the type
+            type_text = "video" if choice == 'video' else "audio"
+            await client.edit_message_text(chat_id, callback_query.message.id,
+                                           f"You chose {type_text}. Now, select the quality:",
+                                           reply_markup=reply_markup)
+        except exceptions.VideoUnavailable:
+            await client.edit_message_text(chat_id, callback_query.message.id, "The video is unavailable.")
+        except Exception as e:
+            await client.edit_message_text(chat_id, callback_query.message.id, f"Error: {e}")
+    else:
+        await client.edit_message_text(chat_id, callback_query.message.id, "Error: Original message not found.")
 
 
 @app.on_callback_query(filters.regex("^(video|audio)_\d+$"))
@@ -79,21 +116,24 @@ async def download_handler(client, callback_query):
     choice = data[0]
     itag = int(data[1])
     chat_id = callback_query.message.chat.id
-    url = callback_query.message.reply_to_message.text  # The URL sent by the user
 
-    try:
-        download_path = await download_video(client, chat_id, url, choice, itag)
-        if os.path.getsize(download_path) > MAX_FILE_SIZE:
-            # Split the video into parts if it is too large
-            split_paths = split_video_by_size(download_path, part_size=MAX_FILE_SIZE - 1024 * 1024)
-            await send_downloaded_files(client, chat_id, split_paths)
-        else:
-            await send_downloaded_file(client, chat_id, download_path, choice)
-    except Exception as e:
-        await client.edit_message_text(chat_id, callback_query.message.id, f"Error: {e}")
-    finally:
-        if 'download_path' in locals() and os.path.exists(download_path):
-            os.remove(download_path)
+    url = user_sessions.get(chat_id)
+    if url:
+        try:
+            download_path = await download_video(client, chat_id, url, choice, itag)
+            if os.path.getsize(download_path) > MAX_FILE_SIZE:
+                # Split the video into parts if it is too large
+                split_paths = split_video_by_size(download_path, part_size=MAX_FILE_SIZE - 1024 * 1024)
+                await send_downloaded_files(client, chat_id, split_paths)
+            else:
+                await send_downloaded_file(client, chat_id, download_path, choice)
+        except Exception as e:
+            await client.edit_message_text(chat_id, callback_query.message.id, f"Error: {e}")
+        finally:
+            if 'download_path' in locals() and os.path.exists(download_path):
+                os.remove(download_path)
+    else:
+        await client.edit_message_text(chat_id, callback_query.message.id, "Error: Original message not found.")
 
 
 async def send_downloaded_files(client, chat_id, download_paths):
