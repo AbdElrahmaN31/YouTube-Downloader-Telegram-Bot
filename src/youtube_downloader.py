@@ -11,15 +11,15 @@ def sanitize_title(title):
     return re.sub(r'[\\/*?:"<>|]', "", title)
 
 
-async def send_progress_bar(chat_id, message_id, percentage, context):
+async def send_progress_bar(app, chat_id, message_id, percentage):
     bar_length = 20  # Length of the progress bar
     block = int(round(bar_length * percentage / 100))
     progress_bar = "▰" * block + "▱" * (bar_length - block)
     text = f"Downloading: [{progress_bar}] {percentage:.2f}%"
-    await context.bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id)
+    await app.edit_message_text(chat_id, message_id, text=text)
 
 
-async def download_video(url, choice, itag, update, context):
+async def download_video(app, chat_id, url, choice, itag):
     yt = YouTube(url)
     video_stream = yt.streams.get_by_itag(itag)
     video_title = sanitize_title(yt.title)
@@ -28,7 +28,7 @@ async def download_video(url, choice, itag, update, context):
     audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
 
     # Update the user about the start of the download
-    message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
+    message = await app.send_message(chat_id, f"Downloading {video_title}...")
 
     last_percentage = 0
 
@@ -39,8 +39,7 @@ async def download_video(url, choice, itag, update, context):
         percentage = bytes_downloaded / total_size * 100
         if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
             last_percentage = int(percentage)
-            context.application.create_task(
-                send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
+            app.loop.create_task(send_progress_bar(app, chat_id, message.id, percentage))
 
     yt.register_on_progress_callback(progress_callback)
     video_path = video_stream.download(filename=f'{video_title}_video.mp4')
@@ -65,11 +64,10 @@ async def download_video(url, choice, itag, update, context):
             merge_percentage += 1
             if merge_percentage > 100:
                 merge_percentage = 100
-            await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+            await send_progress_bar(app, chat_id, message.id, merge_percentage)
             time.sleep(1)
 
-        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                            message_id=message.message_id)
+        await app.edit_message_text(chat_id, message.id, f"Downloaded {video_title}!")
         return output_path
     finally:
         # Clean up temporary files
@@ -101,7 +99,7 @@ def split_video_by_size(file_path, part_size=49 * 1024 * 1024):
     return output_files
 
 
-async def download_playlist(url, update, context):
+async def download_playlist(app, chat_id, url):
     playlist = Playlist(url)
     download_paths = []
     for video_url in playlist.video_urls:
@@ -110,7 +108,7 @@ async def download_playlist(url, update, context):
         audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
         video_title = sanitize_title(yt.title)
 
-        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
+        message = await app.send_message(chat_id, f"Downloading {video_title}...")
 
         last_percentage = 0
 
@@ -121,8 +119,7 @@ async def download_playlist(url, update, context):
             percentage = bytes_downloaded / total_size * 100
             if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
                 last_percentage = int(percentage)
-                context.application.create_task(
-                    send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
+                app.loop.create_task(send_progress_bar(app, chat_id, message.id, percentage))
 
         yt.register_on_progress_callback(progress_callback)
         video_path = video_stream.download(filename=f'{video_title}_video.mp4')
@@ -146,11 +143,10 @@ async def download_playlist(url, update, context):
                 merge_percentage += 1
                 if merge_percentage > 100:
                     merge_percentage = 100
-                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+                await send_progress_bar(app, chat_id, message.id, merge_percentage)
                 time.sleep(1)
 
-            await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                                message_id=message.message_id)
+            await app.edit_message_text(chat_id, message.id, f"Downloaded {video_title}!")
             download_paths.append(output_path)
         finally:
             os.remove(video_path)
@@ -159,7 +155,7 @@ async def download_playlist(url, update, context):
     return download_paths
 
 
-async def download_channel(url, update, context):
+async def download_channel(app, chat_id, url):
     channel = Channel(url)
     download_paths = []
     for video_url in channel.video_urls:
@@ -168,7 +164,7 @@ async def download_channel(url, update, context):
         audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
         video_title = sanitize_title(yt.title)
 
-        message = await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Downloading {video_title}...")
+        message = await app.send_message(chat_id, f"Downloading {video_title}...")
 
         last_percentage = 0
 
@@ -179,8 +175,7 @@ async def download_channel(url, update, context):
             percentage = bytes_downloaded / total_size * 100
             if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
                 last_percentage = int(percentage)
-                context.application.create_task(
-                    send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
+                app.loop.create_task(send_progress_bar(app, chat_id, message.id, percentage))
 
         yt.register_on_progress_callback(progress_callback)
         video_path = video_stream.download(filename=f'{video_title}_video.mp4')
@@ -204,11 +199,10 @@ async def download_channel(url, update, context):
                 merge_percentage += 1
                 if merge_percentage > 100:
                     merge_percentage = 100
-                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+                await send_progress_bar(app, chat_id, message.id, merge_percentage)
                 time.sleep(1)
 
-            await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                                message_id=message.message_id)
+            await app.edit_message_text(chat_id, message.id, f"Downloaded {video_title}!")
             download_paths.append(output_path)
         finally:
             os.remove(video_path)
