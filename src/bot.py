@@ -2,7 +2,7 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from pytube import YouTube, exceptions
-from youtube_downloader import download_video, download_playlist, download_channel
+from youtube_downloader import download_video, download_playlist, download_channel, split_video_by_size
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -87,11 +87,9 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     try:
         download_path = await download_video(url, choice, itag, update, context)
         if os.path.getsize(download_path) > MAX_FILE_SIZE:
-            await context.bot.send_message(chat_id=query.message.chat_id,
-                                           text=f"File is too large to send via Telegram. Please download it from the link below.")
-            await context.bot.send_message(chat_id=query.message.chat_id,
-                                           text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
-                                           parse_mode="Markdown")
+            # Split the video into parts if it is too large
+            split_paths = split_video_by_size(download_path, part_size=MAX_FILE_SIZE - 1024 * 1024)
+            await send_downloaded_files(update, context, split_paths)
         else:
             await send_downloaded_file(query, context, download_path, choice)
     except Exception as e:
@@ -104,15 +102,8 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def send_downloaded_files(update: Update, context: ContextTypes.DEFAULT_TYPE, download_paths):
     for download_path in download_paths:
         try:
-            if os.path.getsize(download_path) > MAX_FILE_SIZE:
-                await context.bot.send_message(chat_id=update.effective_chat.id,
-                                               text=f"File is too large to send via Telegram. Please download it from the link below.")
-                await context.bot.send_message(chat_id=update.effective_chat.id,
-                                               text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
-                                               parse_mode="Markdown")
-            else:
-                with open(download_path, 'rb') as file:
-                    await context.bot.send_video(chat_id=update.effective_chat.id, video=file)
+            with open(download_path, 'rb') as file:
+                await context.bot.send_video(chat_id=update.effective_chat.id, video=file)
         finally:
             if os.path.exists(download_path):
                 os.remove(download_path)
@@ -120,18 +111,11 @@ async def send_downloaded_files(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def send_downloaded_file(query, context: ContextTypes.DEFAULT_TYPE, download_path, choice):
     try:
-        if os.path.getsize(download_path) > MAX_FILE_SIZE:
-            await context.bot.send_message(chat_id=query.message.chat_id,
-                                           text=f"File is too large to send via Telegram. Please download it from the link below.")
-            await context.bot.send_message(chat_id=query.message.chat_id,
-                                           text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
-                                           parse_mode="Markdown")
-        else:
-            with open(download_path, 'rb') as file:
-                if choice == 'video':
-                    await context.bot.send_video(chat_id=query.message.chat_id, video=file)
-                else:
-                    await context.bot.send_audio(chat_id=query.message.chat_id, audio=file)
+        with open(download_path, 'rb') as file:
+            if choice == 'video':
+                await context.bot.send_video(chat_id=query.message.chat_id, video=file)
+            else:
+                await context.bot.send_audio(chat_id=query.message.chat_id, audio=file)
     finally:
         if os.path.exists(download_path):
             os.remove(download_path)

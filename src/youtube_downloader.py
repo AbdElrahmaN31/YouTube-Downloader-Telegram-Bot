@@ -1,8 +1,10 @@
+import time
+
 from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
 import re
-import time
+import math
 
 
 def sanitize_title(title):
@@ -72,6 +74,30 @@ async def download_video(url, choice, itag, update, context):
         # Clean up temporary files
         os.remove(video_path)
         os.remove(audio_path)
+
+
+def split_video_by_size(file_path, part_size=49 * 1024 * 1024):
+    output_files = []
+    part_index = 1
+
+    while os.path.getsize(file_path) > part_size:
+        output_file = f"{file_path.rsplit('.', 1)[0]}_part{part_index}.mp4"
+        command = [
+            'ffmpeg',
+            '-i', file_path,
+            '-c', 'copy',
+            '-fs', str(part_size),
+            output_file
+        ]
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output_files.append(output_file)
+        part_index += 1
+        # Remove the processed part to avoid duplication
+        file_path = output_file
+
+    output_files.append(file_path)  # Add the last part
+
+    return output_files
 
 
 async def download_playlist(url, update, context):
