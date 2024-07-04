@@ -29,9 +29,9 @@ def sync_time():
 # Sync system time
 sync_time()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+API_ID = os.getenv('API_ID')
+API_HASH = os.getenv('API_HASH')
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
