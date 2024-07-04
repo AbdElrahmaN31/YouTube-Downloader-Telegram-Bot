@@ -1,27 +1,31 @@
 import os
+
 import ntplib
+import requests
+import time
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from youtube_downloader import download_video, download_playlist, download_channel, split_video_by_size
 from pytube import exceptions, YouTube
-import time
+from dotenv import load_dotenv
+from datetime import datetime
+
+# Load environment variables from .env file
+load_dotenv()
 
 
-# Function to get time from NTP server
-def get_ntp_time():
-    client = ntplib.NTPClient()
-    response = client.request('pool.ntp.org')
-    return response.tx_time
-
-
-# Get NTP time and sync system time if needed
 def sync_time():
     try:
-        ntp_time = get_ntp_time()
+        client = ntplib.NTPClient()
+        response = client.request('pool.ntp.org')
+        ntp_time = response.tx_time
+
         current_time = time.time()
         if abs(ntp_time - current_time) > 5:  # If time difference is more than 5 seconds
             print("Time difference detected. Syncing time...")
-            os.system(f'sudo date -s @{ntp_time}')
+            # Set the system time
+            new_time = datetime.fromtimestamp(ntp_time).strftime('%m%d%H%M%Y.%S')
+            os.system(f'date {new_time}')
     except Exception as e:
         print(f"Failed to sync time: {e}")
 
