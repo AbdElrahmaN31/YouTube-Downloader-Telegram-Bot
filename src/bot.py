@@ -96,36 +96,45 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await send_downloaded_file(query, context, download_path, choice)
     except Exception as e:
         await query.edit_message_text(f"Error: {e}")
+    finally:
+        if 'download_path' in locals() and os.path.exists(download_path):
+            os.remove(download_path)
 
 
 async def send_downloaded_files(update: Update, context: ContextTypes.DEFAULT_TYPE, download_paths):
     for download_path in download_paths:
+        try:
+            if os.path.getsize(download_path) > MAX_FILE_SIZE:
+                await context.bot.send_message(chat_id=update.effective_chat.id,
+                                               text=f"File is too large to send via Telegram. Please download it from the link below.")
+                await context.bot.send_message(chat_id=update.effective_chat.id,
+                                               text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
+                                               parse_mode="Markdown")
+            else:
+                with open(download_path, 'rb') as file:
+                    await context.bot.send_video(chat_id=update.effective_chat.id, video=file)
+        finally:
+            if os.path.exists(download_path):
+                os.remove(download_path)
+
+
+async def send_downloaded_file(query, context: ContextTypes.DEFAULT_TYPE, download_path, choice):
+    try:
         if os.path.getsize(download_path) > MAX_FILE_SIZE:
-            await context.bot.send_message(chat_id=update.effective_chat.id,
+            await context.bot.send_message(chat_id=query.message.chat_id,
                                            text=f"File is too large to send via Telegram. Please download it from the link below.")
-            await context.bot.send_message(chat_id=update.effective_chat.id,
+            await context.bot.send_message(chat_id=query.message.chat_id,
                                            text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
                                            parse_mode="Markdown")
         else:
             with open(download_path, 'rb') as file:
-                await context.bot.send_video(chat_id=update.effective_chat.id, video=file)
-        os.remove(download_path)  # Delete the file after sending it
-
-
-async def send_downloaded_file(query, context: ContextTypes.DEFAULT_TYPE, download_path, choice):
-    if os.path.getsize(download_path) > MAX_FILE_SIZE:
-        await context.bot.send_message(chat_id=query.message.chat_id,
-                                       text=f"File is too large to send via Telegram. Please download it from the link below.")
-        await context.bot.send_message(chat_id=query.message.chat_id,
-                                       text=f"[Download {os.path.basename(download_path)}](file://{os.path.abspath(download_path)})",
-                                       parse_mode="Markdown")
-    else:
-        with open(download_path, 'rb') as file:
-            if choice == 'video':
-                await context.bot.send_video(chat_id=query.message.chat_id, video=file)
-            else:
-                await context.bot.send_audio(chat_id=query.message.chat_id, audio=file)
-    os.remove(download_path)  # Delete the file after sending it
+                if choice == 'video':
+                    await context.bot.send_video(chat_id=query.message.chat_id, video=file)
+                else:
+                    await context.bot.send_audio(chat_id=query.message.chat_id, audio=file)
+    finally:
+        if os.path.exists(download_path):
+            os.remove(download_path)
 
 
 def main() -> None:

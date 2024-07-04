@@ -35,7 +35,7 @@ async def download_video(url, choice, itag, update, context):
         total_size = stream.filesize
         bytes_downloaded = total_size - bytes_remaining
         percentage = bytes_downloaded / total_size * 100
-        if int(percentage) >= last_percentage + 5:
+        if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
             last_percentage = int(percentage)
             context.application.create_task(
                 send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -44,33 +44,34 @@ async def download_video(url, choice, itag, update, context):
     video_path = video_stream.download(filename=f'{video_title}_video.mp4')
     audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-    # Merge video and audio using ffmpeg
-    output_path = f'{video_title}.mp4'
-    command = [
-        'ffmpeg',
-        '-i', video_path,
-        '-i', audio_path,
-        '-c:v', 'copy',
-        '-c:a', 'aac',
-        '-strict', 'experimental',
-        output_path
-    ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    merge_percentage = 0
-    while process.poll() is None:
-        merge_percentage += 1
-        if merge_percentage > 100:
-            merge_percentage = 100
-        await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-        time.sleep(1)
+    try:
+        # Merge video and audio using ffmpeg
+        output_path = f'{video_title}.mp4'
+        command = [
+            'ffmpeg',
+            '-i', video_path,
+            '-i', audio_path,
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-strict', 'experimental',
+            output_path
+        ]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        merge_percentage = 0
+        while process.poll() is None:
+            merge_percentage += 1
+            if merge_percentage > 100:
+                merge_percentage = 100
+            await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+            time.sleep(1)
 
-    # Clean up temporary files
-    os.remove(video_path)
-    os.remove(audio_path)
-
-    await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                        message_id=message.message_id)
-    return output_path
+        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                            message_id=message.message_id)
+        return output_path
+    finally:
+        # Clean up temporary files
+        os.remove(video_path)
+        os.remove(audio_path)
 
 
 async def download_playlist(url, update, context):
@@ -91,7 +92,7 @@ async def download_playlist(url, update, context):
             total_size = stream.filesize
             bytes_downloaded = total_size - bytes_remaining
             percentage = bytes_downloaded / total_size * 100
-            if int(percentage) >= last_percentage + 5:
+            if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
                 last_percentage = int(percentage)
                 context.application.create_task(
                     send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -100,31 +101,32 @@ async def download_playlist(url, update, context):
         video_path = video_stream.download(filename=f'{video_title}_video.mp4')
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        output_path = f'{video_title}.mp4'
-        command = [
-            'ffmpeg',
-            '-i', video_path,
-            '-i', audio_path,
-            '-c:v', 'copy',
-            '-c:a', 'aac',
-            '-strict', 'experimental',
-            output_path
-        ]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        merge_percentage = 0
-        while process.poll() is None:
-            merge_percentage += 1
-            if merge_percentage > 100:
-                merge_percentage = 100
-            await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-            time.sleep(1)
+        try:
+            output_path = f'{video_title}.mp4'
+            command = [
+                'ffmpeg',
+                '-i', video_path,
+                '-i', audio_path,
+                '-c:v', 'copy',
+                '-c:a', 'aac',
+                '-strict', 'experimental',
+                output_path
+            ]
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            merge_percentage = 0
+            while process.poll() is None:
+                merge_percentage += 1
+                if merge_percentage > 100:
+                    merge_percentage = 100
+                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+                time.sleep(1)
 
-        os.remove(video_path)
-        os.remove(audio_path)
-
-        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                            message_id=message.message_id)
-        download_paths.append(output_path)
+            await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                                message_id=message.message_id)
+            download_paths.append(output_path)
+        finally:
+            os.remove(video_path)
+            os.remove(audio_path)
 
     return download_paths
 
@@ -147,7 +149,7 @@ async def download_channel(url, update, context):
             total_size = stream.filesize
             bytes_downloaded = total_size - bytes_remaining
             percentage = bytes_downloaded / total_size * 100
-            if int(percentage) >= last_percentage + 5:
+            if int(percentage) >= last_percentage + 5:  # Update only if the progress changes by 5%
                 last_percentage = int(percentage)
                 context.application.create_task(
                     send_progress_bar(update.effective_chat.id, message.message_id, percentage, context))
@@ -156,30 +158,31 @@ async def download_channel(url, update, context):
         video_path = video_stream.download(filename=f'{video_title}_video.mp4')
         audio_path = audio_stream.download(filename=f'{video_title}_audio.mp4')
 
-        output_path = f'{video_title}.mp4'
-        command = [
-            'ffmpeg',
-            '-i', video_path,
-            '-i', audio_path,
-            '-c:v', 'copy',
-            '-c:a', 'aac',
-            '-strict', 'experimental',
-            output_path
-        ]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        merge_percentage = 0
-        while process.poll() is None:
-            merge_percentage += 1
-            if merge_percentage > 100:
-                merge_percentage = 100
-            await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-            time.sleep(1)
+        try:
+            output_path = f'{video_title}.mp4'
+            command = [
+                'ffmpeg',
+                '-i', video_path,
+                '-i', audio_path,
+                '-c:v', 'copy',
+                '-c:a', 'aac',
+                '-strict', 'experimental',
+                output_path
+            ]
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            merge_percentage = 0
+            while process.poll() is None:
+                merge_percentage += 1
+                if merge_percentage > 100:
+                    merge_percentage = 100
+                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
+                time.sleep(1)
 
-        os.remove(video_path)
-        os.remove(audio_path)
-
-        await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
-                                            message_id=message.message_id)
-        download_paths.append(output_path)
+            await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
+                                                message_id=message.message_id)
+            download_paths.append(output_path)
+        finally:
+            os.remove(video_path)
+            os.remove(audio_path)
 
     return download_paths
