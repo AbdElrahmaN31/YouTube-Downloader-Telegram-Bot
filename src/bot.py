@@ -1,9 +1,8 @@
 import os
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pytube import YouTube, exceptions
-
 from youtube_downloader import download_video, download_playlist, download_channel, split_video_by_size
+from pytube import exceptions, YouTube
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 API_ID = os.getenv('API_ID')
@@ -21,7 +20,7 @@ async def start(client, message):
 
 @app.on_message(filters.text & ~filters.command(["start"]))
 async def choose_download_type(client, message):
-    url = message.text
+    url = message.text  # The URL sent by the user
     try:
         if 'playlist' in url:
             await message.reply("Downloading Playlist...")
@@ -49,7 +48,7 @@ async def choose_download_type(client, message):
 async def button_handler(client, callback_query):
     choice = callback_query.data
     chat_id = callback_query.message.chat.id
-    url = callback_query.message.reply_to_message.text
+    url = callback_query.message.reply_to_message.text  # The URL sent by the user
     try:
         yt = YouTube(url)
         if choice == 'video':
@@ -80,7 +79,7 @@ async def download_handler(client, callback_query):
     choice = data[0]
     itag = int(data[1])
     chat_id = callback_query.message.chat.id
-    url = callback_query.message.reply_to_message.text
+    url = callback_query.message.reply_to_message.text  # The URL sent by the user
 
     try:
         download_path = await download_video(client, chat_id, url, choice, itag)
