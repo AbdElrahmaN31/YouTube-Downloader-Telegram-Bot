@@ -10,6 +10,7 @@ API_ID = os.getenv('API_ID')
 API_HASH = os.getenv('API_HASH')
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
+# Initialize the Pyrogram Client
 app = Client("youtube_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 
@@ -18,7 +19,7 @@ async def start(client, message):
     await message.reply("Hi! Send me a YouTube link to get started.")
 
 
-@app.on_message(filters.text & ~filters.command)
+@app.on_message(filters.text & ~filters.command(["start"]))
 async def choose_download_type(client, message):
     url = message.text
     try:
