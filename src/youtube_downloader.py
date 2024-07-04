@@ -1,10 +1,7 @@
-import time
-
 from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
 import re
-import math
 
 
 def sanitize_title(title):
@@ -60,13 +57,7 @@ async def download_video(url, choice, itag, update, context):
             output_path
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        merge_percentage = 0
-        while process.poll() is None:
-            merge_percentage += 1
-            if merge_percentage > 100:
-                merge_percentage = 100
-            await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-            time.sleep(1)
+        process.wait()  # Wait for the process to complete
 
         await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
                                             message_id=message.message_id)
@@ -81,22 +72,30 @@ def split_video_by_size(file_path, part_size=49 * 1024 * 1024):
     output_files = []
     part_index = 1
 
-    while os.path.getsize(file_path) > part_size:
+    total_duration_command = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of',
+                              'default=noprint_wrappers=1:nokey=1', file_path]
+    total_duration = float(subprocess.check_output(total_duration_command).strip())
+    part_duration = part_size * 8 / (1.4 * 1024 * 1024)  # Approximate duration for part_size in bytes
+
+    while True:
+        start_time = (part_index - 1) * part_duration
         output_file = f"{file_path.rsplit('.', 1)[0]}_part{part_index}.mp4"
         command = [
             'ffmpeg',
             '-i', file_path,
-            '-c', 'copy',
-            '-fs', str(part_size),
+            '-ss', str(start_time),
+            '-t', str(part_duration),
+            '-c:v', 'libx264',  # Ensure the video codec is H.264
+            '-c:a', 'aac',  # Ensure the audio codec is AAC
+            '-strict', 'experimental',
+            '-movflags', '+faststart',  # Ensure the video is streamable
             output_file
         ]
         subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if os.path.getsize(output_file) < part_size:
+            break
         output_files.append(output_file)
         part_index += 1
-        # Remove the processed part to avoid duplication
-        file_path = output_file
-
-    output_files.append(file_path)  # Add the last part
 
     return output_files
 
@@ -141,13 +140,7 @@ async def download_playlist(url, update, context):
                 output_path
             ]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            merge_percentage = 0
-            while process.poll() is None:
-                merge_percentage += 1
-                if merge_percentage > 100:
-                    merge_percentage = 100
-                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-                time.sleep(1)
+            process.wait()  # Wait for the process to complete
 
             await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
                                                 message_id=message.message_id)
@@ -199,13 +192,7 @@ async def download_channel(url, update, context):
                 output_path
             ]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            merge_percentage = 0
-            while process.poll() is None:
-                merge_percentage += 1
-                if merge_percentage > 100:
-                    merge_percentage = 100
-                await send_progress_bar(update.effective_chat.id, message.message_id, merge_percentage, context)
-                time.sleep(1)
+            process.wait()  # Wait for the process to complete
 
             await context.bot.edit_message_text(text=f"Downloaded {video_title}!", chat_id=message.chat_id,
                                                 message_id=message.message_id)
