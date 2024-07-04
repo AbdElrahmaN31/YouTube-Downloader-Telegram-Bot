@@ -1,3 +1,5 @@
+import time
+
 from pytube import YouTube, Playlist, Channel
 import os
 import subprocess
